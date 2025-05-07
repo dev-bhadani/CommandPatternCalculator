@@ -76,7 +76,7 @@ undo
 
 ---
 
-## 🧪 Running Tests
+## Running Tests
 
 ### Inside Visual Studio:
 
