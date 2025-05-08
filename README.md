@@ -50,7 +50,7 @@ Supports undoable commands with full unit and integration tests.
 
 **Option 1: Inside Visual Studio**
 
-* Set command line arguments: `1` (or any integer) in **Project → Properties → Debug → Application arguments**.
+* You can set a command line argument (e.g., 1 or any integer) in **Project → Properties → Debug → Application arguments**, but if you don't provide one, the program will default to using 1.
 * Press **F5** to start.
 
 **Option 2: From command line**
