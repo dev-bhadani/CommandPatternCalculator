@@ -1,4 +1,4 @@
-name: .NET Framework CI
+name: .NET with Allure Report
 
 on:
   push:
@@ -24,31 +24,36 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      - name: Build the solution using MSBuild
+      - name: Build the solution
         run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
 
-      - name: Run tests with coverage and trx
-        run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx" --verbosity normal
+      - name: Run tests and generate .trx
+        run: dotnet test --no-build --configuration Release --logger "trx"
 
-      - name: Install ReportGenerator
-        run: dotnet tool install -g dotnet-reportgenerator-globaltool
+      - name: Install Java (for Allure CLI)
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
 
-      - name: Generate HTML test report
-        run: reportgenerator -reports:"**/TestResults/**/*.trx;**/TestResults/**/coverage.cobertura.xml" -targetdir:TestReport -reporttypes:HtmlInline_AzurePipelines
+      - name: Install Allure CLI
+        run: |
+          choco install allure -y
+          refreshenv
 
-      - name: Upload test results (TRX)
-        if: always()
+      - name: Convert .trx to Allure results
+        run: |
+          dotnet tool install --global trx2allure
+          trx2allure -i **/TestResults/*.trx -o allure-results
+
+      - name: Generate Allure HTML report
+        run: allure generate allure-results -o allure-report --clean
+
+      - name: Upload Allure report artifact
         uses: actions/upload-artifact@v4
         with:
-          name: test-results
-          path: '**/TestResults/*.trx'
-
-      - name: Upload test report (HTML)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-report
-          path: TestReport
+          name: allure-report
+          path: allure-report
 
   deploy-report:
     needs: build-and-test
@@ -59,17 +64,16 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download test report artifact
+      - name: Download Allure report artifact
         uses: actions/download-artifact@v4
         with:
-          name: test-report
-          path: TestReport
+          name: allure-report
+          path: allure-report
 
-      - name: Deploy to GitHub Pages
+      - name: Deploy Allure report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./TestReport
+          publish_dir: ./allure-report
           publish_branch: gh-pages
-          user_name: github-actions[bot]
-          user_email: github-actions[bot]@users.noreply.github.com
+
