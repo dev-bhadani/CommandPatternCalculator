@@ -27,14 +27,14 @@ jobs:
       - name: Build the solution using MSBuild
         run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
 
-      - name: Run tests
-        run: dotnet test --no-build --configuration Release --logger "trx" --verbosity normal
+      - name: Run tests with coverage and trx
+        run: dotnet test --no-build --configuration Release --collect:"XPlat Code Coverage" --logger "trx" --verbosity normal
 
       - name: Install ReportGenerator
         run: dotnet tool install -g dotnet-reportgenerator-globaltool
 
       - name: Generate HTML test report
-        run: reportgenerator -reports:**/TestResults/*.trx -targetdir:TestReport -reporttypes:HtmlInline_AzurePipelines
+        run: reportgenerator -reports:"**/TestResults/**/*.trx;**/TestResults/**/coverage.cobertura.xml" -targetdir:TestReport -reporttypes:HtmlInline_AzurePipelines
 
       - name: Upload test results (TRX)
         if: always()
@@ -71,3 +71,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./TestReport
           publish_branch: gh-pages
+          user_name: github-actions[bot]
+          user_email: github-actions[bot]@users.noreply.github.com
