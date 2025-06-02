@@ -27,9 +27,8 @@ jobs:
       - name: Build the solution using MSBuild
         run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
 
-      - name: Run tests using VSTest
-        run: |
-          vstest.console.exe CommandPatternCalculator\bin\Release\CommandPatternCalculator.exe /Logger:trx
+      - name: Run tests
+        run: dotnet test --configuration Release --verbosity normal
 
       - name: Publish test results
         if: always()
