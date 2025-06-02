@@ -5,26 +5,35 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
-  workflow_dispatch:  
+  workflow_dispatch:
 
 jobs:
   build-and-test:
-    runs-on: windows-latest  
+    runs-on: windows-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+      - name: Checkout code
+        uses: actions/checkout@v3
 
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v4
-      with:
-        dotnet-version: '7.0.x'
+      - name: Install NuGet CLI
+        uses: NuGet/setup-nuget@v1.0.5
 
-    - name: Restore dependencies
-      run: dotnet restore
+      - name: Restore packages (packages.config-based)
+        run: nuget restore CommandPatternCalculator.sln
 
-    - name: Build the solution
-      run: dotnet build --no-restore --configuration Release
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v1.1
 
-    - name: Run tests
-      run: dotnet test --no-build --verbosity normal
+      - name: Build the solution using MSBuild
+        run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
+
+      - name: Run tests with VSTest
+        run: |
+          vstest.console.exe CommandPatternCalculator\bin\Release\CommandPatternCalculator.exe /Logger:trx
+
+      - name: Publish test results
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: '**/*.trx'
