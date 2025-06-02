@@ -1,4 +1,4 @@
-name: .NET with Allure Report
+name: .NET Framework CI with Allure
 
 on:
   push:
@@ -27,29 +27,26 @@ jobs:
       - name: Build the solution
         run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
 
-      - name: Run tests and generate .trx
-        run: dotnet test --no-build --configuration Release --logger "trx"
+      - name: Run tests and export .trx
+        run: dotnet test --no-build --configuration Release --logger "trx" --verbosity normal
 
-      - name: Install Java (for Allure CLI)
-        uses: actions/setup-java@v3
-        with:
-          distribution: 'temurin'
-          java-version: '17'
+      - name: Install trx2allure tool
+        run: dotnet tool install --global trx2allure
 
-      - name: Install Allure CLI
+      - name: Convert .trx to Allure format
+        run: trx2allure "**/TestResults/*.trx" -o allure-results
+
+      - name: Download Allure CLI
         run: |
-          choco install allure -y
-          refreshenv
+          curl -L -o allure.zip https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.zip
+          powershell -command "Expand-Archive -Path allure.zip -DestinationPath allure-cli"
+          echo "${{ github.workspace }}\\allure-cli\\allure-2.27.0\\bin" >> $env:GITHUB_PATH
 
-      - name: Convert .trx to Allure results
-        run: |
-          dotnet tool install --global trx2allure
-          trx2allure -i **/TestResults/*.trx -o allure-results
-
-      - name: Generate Allure HTML report
-        run: allure generate allure-results -o allure-report --clean
+      - name: Generate Allure report
+        run: allure generate allure-results --clean -o allure-report
 
       - name: Upload Allure report artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: allure-report
@@ -70,10 +67,9 @@ jobs:
           name: allure-report
           path: allure-report
 
-      - name: Deploy Allure report to GitHub Pages
+      - name: Deploy Allure Report to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./allure-report
           publish_branch: gh-pages
-
