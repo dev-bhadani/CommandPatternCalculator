@@ -1,4 +1,4 @@
-name: .NET CI
+name: .NET Framework CI
 
 on:
   push:
@@ -18,7 +18,7 @@ jobs:
       - name: Install NuGet CLI
         uses: NuGet/setup-nuget@v1.0.5
 
-      - name: Restore packages (packages.config-based)
+      - name: Restore NuGet packages
         run: nuget restore CommandPatternCalculator.sln
 
       - name: Setup MSBuild
@@ -27,13 +27,13 @@ jobs:
       - name: Build the solution using MSBuild
         run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
 
-      - name: Run tests with VSTest
+      - name: Run tests using VSTest
         run: |
           vstest.console.exe CommandPatternCalculator\bin\Release\CommandPatternCalculator.exe /Logger:trx
 
       - name: Publish test results
         if: always()
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.3
         with:
           name: test-results
           path: '**/*.trx'
