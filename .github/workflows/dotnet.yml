@@ -1,4 +1,4 @@
-name: .NET Framework CI with Allure
+name: .NET Framework CI
 
 on:
   push:
@@ -27,37 +27,28 @@ jobs:
       - name: Build the solution using MSBuild
         run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
 
-      - name: Add Allure.Xunit NuGet package
-        run: nuget install Allure.Xunit -OutputDirectory packages
+      - name: Run tests
+        run: dotnet test --no-build --configuration Release --logger "trx" --verbosity normal
 
-      - name: Install Allure CLI via Scoop
-        run: |
-          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
-          irm get.scoop.sh | iex
-          scoop install allure
+      - name: Install ReportGenerator
+        run: dotnet tool install -g dotnet-reportgenerator-globaltool
 
-      - name: Run tests with Allure attributes
-        run: |
-          mkdir allure-results
-          dotnet test --no-build --configuration Release --results-directory allure-results --logger:"xunit"
+      - name: Generate HTML test report
+        run: reportgenerator -reports:**/TestResults/*.trx -targetdir:TestReport -reporttypes:Html
 
-      - name: Generate Allure report
-        run: |
-          allure generate allure-results --clean -o allure-report
-
-      - name: Upload test results (Allure)
+      - name: Upload test results (TRX)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-results
-          path: allure-results
+          name: test-results
+          path: '**/TestResults/*.trx'
 
-      - name: Upload Allure report (HTML)
+      - name: Upload test report (HTML)
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: allure-report
-          path: allure-report
+          name: test-report
+          path: TestReport
 
   deploy-report:
     needs: build-and-test
@@ -68,15 +59,15 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      - name: Download Allure report artifact
+      - name: Download test report artifact
         uses: actions/download-artifact@v4
         with:
-          name: allure-report
-          path: allure-report
+          name: test-report
+          path: TestReport
 
       - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./allure-report
+          publish_dir: ./TestReport
           publish_branch: gh-pages
