@@ -24,28 +24,35 @@ jobs:
       - name: Setup MSBuild
         uses: microsoft/setup-msbuild@v1.1
 
-      - name: Build the solution
+      - name: Build the solution using MSBuild
         run: msbuild CommandPatternCalculator.sln /p:Configuration=Release
 
-      - name: Run tests and export .trx
-        run: dotnet test --no-build --configuration Release --logger "trx" --verbosity normal
+      - name: Add Allure.Xunit NuGet package
+        run: nuget install Allure.Xunit -OutputDirectory packages
 
-      - name: Install trx2allure tool
-        run: dotnet tool install --global trx2allure
-
-      - name: Convert .trx to Allure format
-        run: trx2allure "**/TestResults/*.trx" -o allure-results
-
-      - name: Download Allure CLI
+      - name: Install Allure CLI via Scoop
         run: |
-          curl -L -o allure.zip https://github.com/allure-framework/allure2/releases/download/2.27.0/allure-2.27.0.zip
-          powershell -command "Expand-Archive -Path allure.zip -DestinationPath allure-cli"
-          echo "${{ github.workspace }}\\allure-cli\\allure-2.27.0\\bin" >> $env:GITHUB_PATH
+          Set-ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
+          irm get.scoop.sh | iex
+          scoop install allure
+
+      - name: Run tests with Allure attributes
+        run: |
+          mkdir allure-results
+          dotnet test --no-build --configuration Release --results-directory allure-results --logger:"xunit"
 
       - name: Generate Allure report
-        run: allure generate allure-results --clean -o allure-report
+        run: |
+          allure generate allure-results --clean -o allure-report
 
-      - name: Upload Allure report artifact
+      - name: Upload test results (Allure)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: allure-results
+          path: allure-results
+
+      - name: Upload Allure report (HTML)
         if: always()
         uses: actions/upload-artifact@v4
         with:
@@ -67,7 +74,7 @@ jobs:
           name: allure-report
           path: allure-report
 
-      - name: Deploy Allure Report to GitHub Pages
+      - name: Deploy to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
